@@ -1,7 +1,7 @@
 import { ButtonStatus, FeedbackButton } from '@/components/ui/FeedbackButton';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -22,9 +22,13 @@ export default function NewTransactionScreen() {
   const isDark = colorScheme === 'dark';
   const router = useRouter();
 
+  // Tipo inicial recibido desde el widget de Android (?type=gasto|ingreso)
+  const { type: typeParam } = useLocalSearchParams<{ type?: string }>();
+  const initialType: 'ingreso' | 'gasto' = typeParam === 'ingreso' ? 'ingreso' : 'gasto';
+
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState('');
-  const [type, setType] = useState<'ingreso' | 'gasto'>('gasto');
+  const [type, setType] = useState<'ingreso' | 'gasto'>(initialType);
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');

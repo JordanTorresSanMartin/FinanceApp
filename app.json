@@ -43,6 +43,24 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "QuickAdd",
+              "label": "Registro rápido",
+              "description": "Agrega un gasto o ingreso al instante",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 0
+            }
+          ]
+        }
       ]
     ],
     "experiments": {
