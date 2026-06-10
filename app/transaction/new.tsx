@@ -45,6 +45,24 @@ export default function NewTransactionScreen() {
   const toggleAnim = useRef(new Animated.Value(type === 'gasto' ? 0 : 1)).current;
   const togglePos = toggleAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '50%'] });
 
+  // Format with thousands separator while typing (es-CL uses dots)
+  const formatAmountInput = (raw: string) => {
+    const digits = raw.replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    return parseInt(digits, 10).toLocaleString('es-CL');
+  };
+
+  const toISO = (d: Date) => d.toISOString().split('T')[0];
+  const setQuickDate = (offsetDays: number) => {
+    Haptics.selectionAsync();
+    const d = new Date();
+    d.setDate(d.getDate() - offsetDays);
+    setTxDate(toISO(d));
+  };
+  const isToday = txDate === toISO(new Date());
+  const yesterdayDate = new Date(); yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const isYesterday = txDate === toISO(yesterdayDate);
+
   // ── Fetch real categories from Supabase ──────────────────────────────────────
   useEffect(() => {
     const fetchCategories = async () => {
@@ -203,7 +221,7 @@ export default function NewTransactionScreen() {
               placeholder="0"
               placeholderTextColor={isDark ? '#3A3A3C' : '#C7C7CC'}
               value={amount}
-              onChangeText={setAmount}
+              onChangeText={t => setAmount(formatAmountInput(t))}
               autoFocus
             />
           </View>
@@ -231,6 +249,18 @@ export default function NewTransactionScreen() {
               value={txDate}
               onChangeText={setTxDate}
             />
+            <Pressable
+              onPress={() => setQuickDate(0)}
+              style={[styles.dateChip, { backgroundColor: isToday ? `${BLUE}18` : 'transparent', borderColor: isToday ? BLUE : BORDER }]}
+            >
+              <Text style={[styles.dateChipText, { color: isToday ? BLUE : TEXT2 }]}>Hoy</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setQuickDate(1)}
+              style={[styles.dateChip, { backgroundColor: isYesterday ? `${BLUE}18` : 'transparent', borderColor: isYesterday ? BLUE : BORDER }]}
+            >
+              <Text style={[styles.dateChipText, { color: isYesterday ? BLUE : TEXT2 }]}>Ayer</Text>
+            </Pressable>
           </View>
 
           {/* Categories */}
@@ -357,6 +387,11 @@ const styles = StyleSheet.create({
   },
   inputIcon: { marginRight: 12 },
   inputField: { flex: 1, fontSize: 16 },
+  dateChip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14,
+    borderWidth: 1, marginLeft: 6,
+  },
+  dateChipText: { fontSize: 13, fontWeight: '600' },
 
   // Categories
   sectionHeader: {

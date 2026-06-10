@@ -11,7 +11,7 @@ import { supabase } from '../../lib/supabase';
 import { Transaction } from '../../types/finance';
 
 // ── Animated list item ─────────────────────────────────────────────────────────
-function TxItem({ item, index, formatMoney, TEXT, TEXT2, CARD, BORDER, GREEN, RED }: any) {
+function TxItem({ item, index, formatMoney, onPress, TEXT, TEXT2, CARD, BORDER, GREEN, RED }: any) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -40,14 +40,22 @@ function TxItem({ item, index, formatMoney, TEXT, TEXT2, CARD, BORDER, GREEN, RE
           styles.txItem,
           { backgroundColor: CARD, borderColor: BORDER, opacity: pressed ? 0.75 : 1 }
         ]}
-        onPress={() => Haptics.selectionAsync()}
+        onPress={() => { Haptics.selectionAsync(); onPress?.(item); }}
       >
         <View style={[styles.txIconWrap, { backgroundColor: `${item.categories?.color || '#999'}18` }]}>
           <Ionicons name={getValidIcon(item.categories?.icon)} size={22} color={item.categories?.color || '#999'} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.txDesc, { color: TEXT }]} numberOfLines={1}>{item.description}</Text>
-          <Text style={[styles.txCat, { color: TEXT2 }]}>{item.categories?.name || 'Sin categoría'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[styles.txCat, { color: TEXT2 }]}>{item.categories?.name || 'Sin categoría'}</Text>
+            {item.source && (
+              <View style={styles.txSourcePill}>
+                <Ionicons name="mail" size={9} color="#007AFF" />
+                <Text style={styles.txSourceText}>{item.source}</Text>
+              </View>
+            )}
+          </View>
         </View>
         <Text style={[styles.txAmount, { color: isIncome ? GREEN : RED }]}>
           {isIncome ? '+' : '-'}{formatMoney(item.amount)}
@@ -228,23 +236,30 @@ export default function TransactionsScreen() {
             </Text>
           </View>
         ) : (
-          Object.entries(grouped).map(([dateStr, items], gIdx) => (
-            <View key={dateStr} style={styles.dayGroup}>
-              <View style={styles.dayHeaderRow}>
-                <Text style={[styles.dayLabel, { color: TEXT2 }]}>{formatDate(dateStr)}</Text>
-                <View style={[styles.dayDivider, { backgroundColor: BORDER }]} />
+          Object.entries(grouped).map(([dateStr, items], gIdx) => {
+            const dayTotal = items.reduce((s, t) => s + (t.type === 'ingreso' ? t.amount : -t.amount), 0);
+            return (
+              <View key={dateStr} style={styles.dayGroup}>
+                <View style={styles.dayHeaderRow}>
+                  <Text style={[styles.dayLabel, { color: TEXT2 }]}>{formatDate(dateStr)}</Text>
+                  <View style={[styles.dayDivider, { backgroundColor: BORDER }]} />
+                  <Text style={[styles.dayTotal, { color: dayTotal >= 0 ? GREEN : TEXT2 }]}>
+                    {dayTotal >= 0 ? '+' : '-'}{formatMoney(Math.abs(dayTotal))}
+                  </Text>
+                </View>
+                {items.map((t, idx) => (
+                  <TxItem
+                    key={t.id}
+                    item={t}
+                    index={gIdx * 10 + idx}
+                    formatMoney={formatMoney}
+                    onPress={(item: Transaction) => router.push(`/transaction/${item.id}`)}
+                    TEXT={TEXT} TEXT2={TEXT2} CARD={CARD} BORDER={BORDER} GREEN={GREEN} RED={RED}
+                  />
+                ))}
               </View>
-              {items.map((t, idx) => (
-                <TxItem
-                  key={t.id}
-                  item={t}
-                  index={gIdx * 10 + idx}
-                  formatMoney={formatMoney}
-                  TEXT={TEXT} TEXT2={TEXT2} CARD={CARD} BORDER={BORDER} GREEN={GREEN} RED={RED}
-                />
-              ))}
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
 
@@ -299,6 +314,15 @@ const styles = StyleSheet.create({
   dayHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
   dayLabel: { fontSize: 13, fontWeight: '600', textTransform: 'capitalize' },
   dayDivider: { flex: 1, height: StyleSheet.hairlineWidth },
+  dayTotal: { fontSize: 12, fontWeight: '700' },
+
+  // Source pill (imported from Gmail)
+  txSourcePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: 'rgba(0,122,255,0.10)',
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8,
+  },
+  txSourceText: { fontSize: 10, fontWeight: '700', color: '#007AFF' },
 
   // Transaction item
   txItem: {

@@ -19,6 +19,8 @@ export interface Transaction {
   type:        TransactionType;
   amount:      number;
   notes:       string | null;
+  source?:     string | null;   // banco de origen si fue importada desde Gmail
+  email_id?:   string | null;   // id del correo (dedupe de importación)
   categories?: Pick<Category, 'name' | 'icon' | 'color'>;
 }
 

@@ -45,7 +45,7 @@ function AnimatedProgressBar({ pct, color }: { pct: number; color: string }) {
 }
 
 // ── Summary card with fade-in ─────────────────────────────────────────────────
-function SummaryCard({ label, value, color, icon, delay = 0 }: any) {
+function SummaryCard({ label, value, color, icon, delay = 0, cardBg, labelColor }: any) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(16)).current;
   useEffect(() => {
@@ -56,12 +56,12 @@ function SummaryCard({ label, value, color, icon, delay = 0 }: any) {
   }, [value]);
   return (
     <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-      <View style={[styles.summaryCard, { borderLeftColor: color, borderLeftWidth: 3 }]}>
+      <View style={[styles.summaryCard, { borderLeftColor: color, borderLeftWidth: 3, backgroundColor: cardBg || '#FFF' }]}>
         <View style={styles.summaryCardHeader}>
           <View style={[styles.summaryIconBg, { backgroundColor: `${color}20` }]}>
             <Ionicons name={icon} size={18} color={color} />
           </View>
-          <Text style={styles.summaryLabel}>{label}</Text>
+          <Text style={[styles.summaryLabel, labelColor ? { color: labelColor } : null]}>{label}</Text>
         </View>
         <Text style={[styles.summaryValue, { color }]}>{value}</Text>
       </View>
@@ -120,7 +120,7 @@ export default function DashboardScreen() {
   const fetchData = async () => {
     try {
       const [{ data: summaryData }, { data: catData }] = await Promise.all([
-        supabase.from('monthly_summary').select('*').eq('year', currentYear).eq('month', currentMonth).single(),
+        supabase.from('monthly_summary').select('*').eq('year', currentYear).eq('month', currentMonth).maybeSingle(),
         supabase.from('budget_status').select('*').eq('year', currentYear).eq('month', currentMonth).order('sort_order'),
       ]);
       setSummary(summaryData);
@@ -183,11 +183,7 @@ export default function DashboardScreen() {
   };
 
   const s = summary || { total_income: 0, total_expenses: 0, balance: 0, savings_pct: 0 };
-  const displayCategories = categories.length > 0 ? categories : [
-    { category_id: '1', category_name: 'Supermercado', icon: 'cart-outline', color: GREEN, budget_amount: 500000, spent: 480000, pct_used: 96, status: 'advertencia' as const },
-    { category_id: '2', category_name: 'Transporte', icon: 'bus-outline', color: BLUE, budget_amount: 100000, spent: 110000, pct_used: 110, status: 'excedido' as const },
-    { category_id: '3', category_name: 'Entretenimiento', icon: 'film-outline', color: '#BF5AF2', budget_amount: 150000, spent: 50000, pct_used: 33, status: 'ok' as const },
-  ];
+  const displayCategories = categories;
 
   const getStatusColor = (status: string) =>
     status === 'excedido' ? RED : status === 'advertencia' ? ORANGE : GREEN;
@@ -271,6 +267,8 @@ export default function DashboardScreen() {
               color={GREEN}
               icon="arrow-down-circle-outline"
               delay={0}
+              cardBg={CARD}
+              labelColor={TEXT2}
             />
             <View style={{ width: 12 }} />
             <SummaryCard
@@ -279,6 +277,8 @@ export default function DashboardScreen() {
               color={RED}
               icon="arrow-up-circle-outline"
               delay={80}
+              cardBg={CARD}
+              labelColor={TEXT2}
             />
           </View>
         </View>
@@ -301,6 +301,14 @@ export default function DashboardScreen() {
                 </View>
               </View>
             ))
+          ) : displayCategories.length === 0 ? (
+            <View style={[styles.emptyBudget, { backgroundColor: CARD, borderColor: BORDER }]}>
+              <Ionicons name="pie-chart-outline" size={42} color={TEXT2} style={{ opacity: 0.5 }} />
+              <Text style={[styles.emptyBudgetTitle, { color: TEXT }]}>Sin presupuestos este mes</Text>
+              <Text style={[styles.emptyBudgetSub, { color: TEXT2 }]}>
+                Define montos por categoría en la pestaña Presupuesto para ver tu progreso aquí.
+              </Text>
+            </View>
           ) : (
             displayCategories.map((cat, idx) => {
               const statusColor = getStatusColor(cat.status);
@@ -469,6 +477,14 @@ const styles = StyleSheet.create({
   catAmounts: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   catAmountText: { fontSize: 13 },
   catExcessText: { fontSize: 12, fontWeight: '600' },
+
+  // Empty budget state
+  emptyBudget: {
+    alignItems: 'center', justifyContent: 'center', gap: 8,
+    padding: 28, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth,
+  },
+  emptyBudgetTitle: { fontSize: 16, fontWeight: '700' },
+  emptyBudgetSub: { fontSize: 13, textAlign: 'center', lineHeight: 19 },
 
   // FAB
   fabShadow: {
