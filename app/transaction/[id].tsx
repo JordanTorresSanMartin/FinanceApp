@@ -11,16 +11,16 @@ import {
     ScrollView,
     StyleSheet,
     Text, TextInput,
-    useColorScheme,
     View,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { Category } from '../../types/finance';
+import { useAppTheme } from '@/theme';
 
 export default function EditTransactionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const t = useAppTheme();
+  const c = t.colors;
   const router = useRouter();
 
   const [txDate, setTxDate] = useState('');
@@ -35,19 +35,9 @@ export default function EditTransactionScreen() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
-  const BG = isDark ? '#0F0F0F' : '#F4F6FB';
-  const CARD = isDark ? '#1C1C1E' : '#FFFFFF';
-  const TEXT = isDark ? '#F2F2F7' : '#1C1C1E';
-  const TEXT2 = isDark ? '#8E8E93' : '#6C6C70';
-  const BORDER = isDark ? '#2C2C2E' : '#E5E5EA';
-  const GREEN = '#34C759';
-  const RED = '#FF3B30';
-  const BLUE = '#007AFF';
-
   const toggleAnim = useRef(new Animated.Value(0)).current;
   const togglePos = toggleAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '50%'] });
 
-  // Format with thousands separator (es-CL uses dots)
   const formatAmountInput = (raw: string) => {
     const digits = raw.replace(/[^0-9]/g, '');
     if (!digits) return '';
@@ -86,12 +76,12 @@ export default function EditTransactionScreen() {
     fetchAll();
   }, [id]);
 
-  const handleTypeChange = (t: 'ingreso' | 'gasto') => {
+  const handleTypeChange = (newType: 'ingreso' | 'gasto') => {
     Haptics.selectionAsync();
-    setType(t);
+    setType(newType);
     setCategoryId(null);
     Animated.spring(toggleAnim, {
-      toValue: t === 'gasto' ? 0 : 1,
+      toValue: newType === 'gasto' ? 0 : 1,
       useNativeDriver: false,
       tension: 120,
       friction: 10,
@@ -175,29 +165,30 @@ export default function EditTransactionScreen() {
     );
   };
 
-  const filteredCategories = categories.filter(c => c.type === type || c.type === 'ambos');
-  const activeColor = type === 'gasto' ? RED : GREEN;
+  const filteredCategories = categories.filter(cat => cat.type === type || cat.type === 'ambos');
+  const activeColor = type === 'gasto' ? c.expense : c.income;
+  const onActive = type === 'gasto' ? c.onExpense : c.onIncome;
 
   if (loading) {
     return (
-      <View style={[styles.screen, { backgroundColor: BG, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={BLUE} />
+      <View style={[styles.screen, { backgroundColor: c.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={c.primary} />
       </View>
     );
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: BG }]}>
+    <View style={[styles.screen, { backgroundColor: c.background }]}>
       {/* ── Header ── */}
-      <View style={[styles.header, { backgroundColor: CARD, borderBottomColor: BORDER }]}>
+      <View style={[styles.header, { backgroundColor: c.surface }]}>
         <Pressable
           onPress={() => { Haptics.selectionAsync(); router.back(); }}
-          style={({ pressed }) => [styles.headerBtn, { opacity: pressed ? 0.5 : 1 }]}
+          style={({ pressed }) => [styles.headerBtn, { backgroundColor: t.elevation[3], opacity: pressed ? 0.6 : 1 }]}
         >
-          <Ionicons name="close" size={24} color={TEXT} />
+          <Ionicons name="close" size={24} color={c.onSurface} />
         </Pressable>
 
-        <Text style={[styles.headerTitle, { color: TEXT }]}>Editar Transacción</Text>
+        <Text style={[t.type.titleLarge, { color: c.onSurface }]}>Editar transacción</Text>
 
         <FeedbackButton
           label="Guardar"
@@ -205,6 +196,7 @@ export default function EditTransactionScreen() {
           status={buttonStatus}
           onPress={handleSave}
           color={activeColor}
+          onColor={onActive}
           style={styles.saveBtn}
         />
       </View>
@@ -222,47 +214,47 @@ export default function EditTransactionScreen() {
         >
           {/* Source badge for imported transactions */}
           {source && (
-            <View style={[styles.sourceBadge, { backgroundColor: `${BLUE}14`, borderColor: `${BLUE}30` }]}>
-              <Ionicons name="mail-outline" size={14} color={BLUE} />
-              <Text style={[styles.sourceBadgeText, { color: BLUE }]}>
+            <View style={[styles.sourceBadge, { backgroundColor: c.primary + '14', borderColor: c.primary + '30' }]}>
+              <Ionicons name="mail-outline" size={14} color={c.primary} />
+              <Text style={[t.type.labelMedium, { color: c.primary }]}>
                 Importada automáticamente desde {source}
               </Text>
             </View>
           )}
 
           {/* Type toggle */}
-          <View style={[styles.toggleTrack, { backgroundColor: isDark ? '#2C2C2E' : '#E9E9EB' }]}>
+          <View style={[styles.toggleTrack, { backgroundColor: t.elevation[2] }]}>
             <Animated.View style={[styles.toggleThumb, { left: togglePos, backgroundColor: activeColor }]} />
             <Pressable style={styles.toggleHalf} onPress={() => handleTypeChange('gasto')}>
-              <Ionicons name="arrow-up-circle" size={18} color={type === 'gasto' ? '#FFF' : TEXT2} />
-              <Text style={[styles.toggleLabel, { color: type === 'gasto' ? '#FFF' : TEXT2 }]}>Gasto</Text>
+              <Ionicons name="arrow-up-circle" size={18} color={type === 'gasto' ? onActive : c.onSurfaceVariant} />
+              <Text style={[t.type.titleSmall, { color: type === 'gasto' ? onActive : c.onSurfaceVariant }]}>Gasto</Text>
             </Pressable>
             <Pressable style={styles.toggleHalf} onPress={() => handleTypeChange('ingreso')}>
-              <Ionicons name="arrow-down-circle" size={18} color={type === 'ingreso' ? '#FFF' : TEXT2} />
-              <Text style={[styles.toggleLabel, { color: type === 'ingreso' ? '#FFF' : TEXT2 }]}>Ingreso</Text>
+              <Ionicons name="arrow-down-circle" size={18} color={type === 'ingreso' ? onActive : c.onSurfaceVariant} />
+              <Text style={[t.type.titleSmall, { color: type === 'ingreso' ? onActive : c.onSurfaceVariant }]}>Ingreso</Text>
             </Pressable>
           </View>
 
           {/* Amount */}
-          <View style={[styles.amountCard, { backgroundColor: CARD }]}>
-            <Text style={[styles.amountPrefix, { color: TEXT2 }]}>CLP</Text>
+          <View style={[styles.amountCard, { backgroundColor: t.elevation[1] }]}>
+            <Text style={[styles.amountPrefix, { color: c.onSurfaceVariant }]}>CLP</Text>
             <TextInput
               style={[styles.amountInput, { color: activeColor }]}
               keyboardType="numeric"
               placeholder="0"
-              placeholderTextColor={isDark ? '#3A3A3C' : '#C7C7CC'}
+              placeholderTextColor={c.outlineVariant}
               value={amount}
-              onChangeText={t => setAmount(formatAmountInput(t))}
+              onChangeText={v => setAmount(formatAmountInput(v))}
             />
           </View>
 
           {/* Description */}
-          <View style={[styles.inputRow, { backgroundColor: CARD, borderColor: BORDER }]}>
-            <Ionicons name="pencil-outline" size={20} color={TEXT2} style={styles.inputIcon} />
+          <View style={[styles.inputRow, { backgroundColor: t.elevation[1] }]}>
+            <Ionicons name="pencil-outline" size={20} color={c.onSurfaceVariant} style={styles.inputIcon} />
             <TextInput
-              style={[styles.inputField, { color: TEXT }]}
+              style={[styles.inputField, { color: c.onSurface }]}
               placeholder="Descripción"
-              placeholderTextColor={TEXT2}
+              placeholderTextColor={c.onSurfaceVariant}
               value={description}
               onChangeText={setDescription}
               returnKeyType="next"
@@ -270,12 +262,12 @@ export default function EditTransactionScreen() {
           </View>
 
           {/* Date */}
-          <View style={[styles.inputRow, { backgroundColor: CARD, borderColor: BORDER }]}>
-            <Ionicons name="calendar-outline" size={20} color={TEXT2} style={styles.inputIcon} />
+          <View style={[styles.inputRow, { backgroundColor: t.elevation[1] }]}>
+            <Ionicons name="calendar-outline" size={20} color={c.onSurfaceVariant} style={styles.inputIcon} />
             <TextInput
-              style={[styles.inputField, { color: TEXT }]}
+              style={[styles.inputField, { color: c.onSurface }]}
               placeholder="YYYY-MM-DD"
-              placeholderTextColor={TEXT2}
+              placeholderTextColor={c.onSurfaceVariant}
               value={txDate}
               onChangeText={setTxDate}
             />
@@ -283,36 +275,34 @@ export default function EditTransactionScreen() {
 
           {/* Categories */}
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionLabel, { color: TEXT }]}>Categoría</Text>
+            <Text style={[t.type.titleMedium, { color: c.onSurface }]}>Categoría</Text>
           </View>
 
           <View style={styles.catsGrid}>
             {filteredCategories.map(cat => {
               const selected = categoryId === cat.id;
+              const catColor = cat.color || c.primary;
               return (
                 <Pressable
                   key={cat.id}
                   style={({ pressed }) => [
                     styles.catChip,
                     {
-                      backgroundColor: selected ? `${cat.color}18` : CARD,
-                      borderColor: selected ? cat.color : BORDER,
+                      backgroundColor: selected ? catColor + '22' : t.elevation[1],
+                      borderColor: selected ? catColor : 'transparent',
                       opacity: pressed ? 0.75 : 1,
                     }
                   ]}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setCategoryId(cat.id);
-                  }}
+                  onPress={() => { Haptics.selectionAsync(); setCategoryId(cat.id); }}
                 >
-                  <View style={[styles.catChipIcon, { backgroundColor: `${cat.color}20` }]}>
-                    <Ionicons name={getValidIcon(cat.icon)} size={22} color={cat.color} />
+                  <View style={[styles.catChipIcon, { backgroundColor: catColor + '22' }]}>
+                    <Ionicons name={getValidIcon(cat.icon)} size={22} color={catColor} />
                   </View>
-                  <Text style={[styles.catChipLabel, { color: TEXT }]} numberOfLines={1}>
+                  <Text style={[t.type.labelLarge, { color: c.onSurface, maxWidth: 90 }]} numberOfLines={1}>
                     {cat.name}
                   </Text>
                   {selected && (
-                    <Ionicons name="checkmark-circle" size={16} color={cat.color} style={styles.catCheck} />
+                    <Ionicons name="checkmark-circle" size={16} color={catColor} style={styles.catCheck} />
                   )}
                 </Pressable>
               );
@@ -320,12 +310,12 @@ export default function EditTransactionScreen() {
           </View>
 
           {/* Notes */}
-          <View style={[styles.notesBox, { backgroundColor: CARD, borderColor: BORDER }]}>
-            <Ionicons name="document-text-outline" size={20} color={TEXT2} style={{ marginRight: 10, marginTop: 2 }} />
+          <View style={[styles.notesBox, { backgroundColor: t.elevation[1] }]}>
+            <Ionicons name="document-text-outline" size={20} color={c.onSurfaceVariant} style={{ marginRight: 10, marginTop: 2 }} />
             <TextInput
-              style={[styles.notesInput, { color: TEXT }]}
+              style={[styles.notesInput, { color: c.onSurface }]}
               placeholder="Notas (opcional)"
-              placeholderTextColor={TEXT2}
+              placeholderTextColor={c.onSurfaceVariant}
               multiline
               numberOfLines={3}
               textAlignVertical="top"
@@ -340,15 +330,15 @@ export default function EditTransactionScreen() {
             disabled={deleting}
             style={({ pressed }) => [
               styles.deleteBtn,
-              { backgroundColor: `${RED}14`, borderColor: `${RED}40`, opacity: pressed || deleting ? 0.6 : 1 }
+              { backgroundColor: c.errorContainer, opacity: pressed || deleting ? 0.6 : 1 }
             ]}
           >
             {deleting ? (
-              <ActivityIndicator size="small" color={RED} />
+              <ActivityIndicator size="small" color={c.onErrorContainer} />
             ) : (
               <>
-                <Ionicons name="trash-outline" size={18} color={RED} />
-                <Text style={[styles.deleteBtnText, { color: RED }]}>Eliminar transacción</Text>
+                <Ionicons name="trash-outline" size={18} color={c.onErrorContainer} />
+                <Text style={[t.type.titleSmall, { color: c.onErrorContainer }]}>Eliminar transacción</Text>
               </>
             )}
           </Pressable>
@@ -366,17 +356,14 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingTop: 60, paddingHorizontal: 20, paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerBtn: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 40, height: 40, borderRadius: 999,
     justifyContent: 'center', alignItems: 'center',
-    backgroundColor: 'rgba(128,128,128,0.12)',
   },
-  headerTitle: { fontSize: 17, fontWeight: '700' },
   saveBtn: {
-    paddingHorizontal: 16, paddingVertical: 9,
-    borderRadius: 20, minWidth: 80, alignItems: 'center',
+    paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 999, minWidth: 84, alignItems: 'center',
   },
 
   form: { padding: 20, gap: 14 },
@@ -384,68 +371,43 @@ const styles = StyleSheet.create({
   sourceBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 10, borderWidth: 1, alignSelf: 'flex-start',
+    borderRadius: 999, borderWidth: 1, alignSelf: 'flex-start',
   },
-  sourceBadgeText: { fontSize: 12, fontWeight: '600' },
 
+  // Type toggle — shape full
   toggleTrack: {
-    flexDirection: 'row', borderRadius: 14, padding: 4,
+    flexDirection: 'row', borderRadius: 999, padding: 4,
     height: 52, position: 'relative', overflow: 'hidden',
   },
-  toggleThumb: {
-    position: 'absolute', top: 4, bottom: 4,
-    width: '50%', borderRadius: 10,
-  },
-  toggleHalf: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 6, zIndex: 1,
-  },
-  toggleLabel: { fontSize: 15, fontWeight: '600' },
+  toggleThumb: { position: 'absolute', top: 4, bottom: 4, width: '50%', borderRadius: 999 },
+  toggleHalf: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, zIndex: 1 },
 
-  amountCard: {
-    borderRadius: 20, padding: 24, alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 4,
-  },
+  amountCard: { borderRadius: 28, padding: 24, alignItems: 'center' },
   amountPrefix: { fontSize: 14, fontWeight: '600', marginBottom: 4, letterSpacing: 1 },
   amountInput: { fontSize: 52, fontWeight: '800', letterSpacing: -2, textAlign: 'center', minWidth: 120 },
 
   inputRow: {
-    flexDirection: 'row', alignItems: 'center', borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 16, height: 52,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+    flexDirection: 'row', alignItems: 'center', borderRadius: 16,
+    paddingHorizontal: 16, height: 56,
   },
   inputIcon: { marginRight: 12 },
   inputField: { flex: 1, fontSize: 16 },
 
-  sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginTop: 4, marginBottom: 4,
-  },
-  sectionLabel: { fontSize: 16, fontWeight: '700' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 4 },
   catsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   catChip: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 12, paddingVertical: 10,
-    borderRadius: 14, borderWidth: 1.5,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+    borderRadius: 999, borderWidth: 1.5,
   },
-  catChipIcon: {
-    width: 34, height: 34, borderRadius: 10,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  catChipLabel: { fontSize: 14, fontWeight: '500', maxWidth: 90 },
+  catChipIcon: { width: 34, height: 34, borderRadius: 999, justifyContent: 'center', alignItems: 'center' },
   catCheck: { marginLeft: 4 },
 
-  notesBox: {
-    flexDirection: 'row', borderRadius: 14, borderWidth: StyleSheet.hairlineWidth,
-    padding: 14, minHeight: 90,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
-  },
+  notesBox: { flexDirection: 'row', borderRadius: 20, padding: 16, minHeight: 96 },
   notesInput: { flex: 1, fontSize: 15, lineHeight: 22 },
 
   deleteBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    height: 50, borderRadius: 14, borderWidth: 1, marginTop: 10,
+    height: 52, borderRadius: 999, marginTop: 10,
   },
-  deleteBtnText: { fontSize: 15, fontWeight: '700' },
 });

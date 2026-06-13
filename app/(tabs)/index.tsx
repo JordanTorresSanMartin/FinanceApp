@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  StyleSheet, View, Text, ScrollView, TouchableOpacity,
-  RefreshControl, Animated, Pressable, ActivityIndicator,
+  StyleSheet, View, Text, ScrollView,
+  RefreshControl, Animated, Pressable,
   Modal, Alert
 } from 'react-native';
-import { useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -12,9 +11,10 @@ import AlertBanner from '../../components/AlertBanner';
 import { supabase } from '../../lib/supabase';
 import { BudgetStatusRow, MonthlySummary } from '../../types/finance';
 import { FintocWidget } from '../../components/FintocWidget';
+import { useAppTheme } from '@/theme';
 
 // ── Animated skeleton for loading state ──────────────────────────────────────
-function SkeletonBox({ width, height, style }: { width: any; height: number; style?: any }) {
+function SkeletonBox({ width, height, color, style }: { width: any; height: number; color: string; style?: any }) {
   const shimmer = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.loop(
@@ -26,9 +26,7 @@ function SkeletonBox({ width, height, style }: { width: any; height: number; sty
   }, []);
   const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] });
   return (
-    <Animated.View
-      style={[{ width, height, borderRadius: 8, backgroundColor: '#BDBDBD', opacity }, style]}
-    />
+    <Animated.View style={[{ width, height, borderRadius: 8, backgroundColor: color, opacity }, style]} />
   );
 }
 
@@ -39,39 +37,12 @@ function AnimatedProgressBar({ pct, color }: { pct: number; color: string }) {
     Animated.spring(anim, { toValue: Math.min(pct / 100, 1), useNativeDriver: false, tension: 60, friction: 10 }).start();
   }, [pct]);
   const width = anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
-  return (
-    <Animated.View style={{ width, height: '100%', borderRadius: 4, backgroundColor: color }} />
-  );
-}
-
-// ── Summary card with fade-in ─────────────────────────────────────────────────
-function SummaryCard({ label, value, color, icon, delay = 0, cardBg, labelColor }: any) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(16)).current;
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 400, delay, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 400, delay, useNativeDriver: true }),
-    ]).start();
-  }, [value]);
-  return (
-    <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-      <View style={[styles.summaryCard, { borderLeftColor: color, borderLeftWidth: 3, backgroundColor: cardBg || '#FFF' }]}>
-        <View style={styles.summaryCardHeader}>
-          <View style={[styles.summaryIconBg, { backgroundColor: `${color}20` }]}>
-            <Ionicons name={icon} size={18} color={color} />
-          </View>
-          <Text style={[styles.summaryLabel, labelColor ? { color: labelColor } : null]}>{label}</Text>
-        </View>
-        <Text style={[styles.summaryValue, { color }]}>{value}</Text>
-      </View>
-    </Animated.View>
-  );
+  return <Animated.View style={{ width, height: '100%', borderRadius: 999, backgroundColor: color }} />;
 }
 
 export default function DashboardScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const t = useAppTheme();
+  const c = t.colors;
   const router = useRouter();
 
   const [date, setDate] = useState(new Date());
@@ -81,27 +52,8 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [showFintoc, setShowFintoc] = useState(false);
 
-  // FAB pulse animation
+  // FAB press animation
   const fabScale = useRef(new Animated.Value(1)).current;
-  const fabPulse = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(fabPulse, { toValue: 1.15, duration: 1000, useNativeDriver: true }),
-        Animated.timing(fabPulse, { toValue: 1, duration: 1000, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
-
-  const BG = isDark ? '#0F0F0F' : '#F4F6FB';
-  const CARD = isDark ? '#1C1C1E' : '#FFFFFF';
-  const TEXT = isDark ? '#F2F2F7' : '#1C1C1E';
-  const TEXT2 = isDark ? '#8E8E93' : '#6C6C70';
-  const BORDER = isDark ? '#2C2C2E' : '#E5E5EA';
-  const GREEN = '#34C759';
-  const RED = '#FF3B30';
-  const BLUE = '#007AFF';
-  const ORANGE = '#FF9500';
 
   const currentYear = date.getFullYear();
   const currentMonth = date.getMonth() + 1;
@@ -152,13 +104,12 @@ export default function DashboardScreen() {
   const onFABPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Animated.sequence([
-      Animated.timing(fabScale, { toValue: 0.88, duration: 80, useNativeDriver: true }),
+      Animated.timing(fabScale, { toValue: 0.92, duration: 80, useNativeDriver: true }),
       Animated.timing(fabScale, { toValue: 1, duration: 120, useNativeDriver: true }),
     ]).start(() => router.push('/transaction/new'));
   };
 
-  const formatMoney = (n: number) =>
-    '$' + Math.round(n).toLocaleString('es-CL');
+  const formatMoney = (n: number) => '$' + Math.round(n).toLocaleString('es-CL');
 
   const handleLinkSuccess = async (publicToken: string) => {
     setShowFintoc(false);
@@ -168,13 +119,10 @@ export default function DashboardScreen() {
         Alert.alert("Error", "Usuario no autenticado");
         return;
       }
-
       const { data, error } = await supabase.functions.invoke('fintoc-exchange', {
         body: { public_token: publicToken, user_id: user.id }
       });
-
       if (error) throw error;
-      
       Alert.alert("Éxito", `Banco ${data.bank_name || ''} vinculado correctamente`);
     } catch (err: any) {
       console.error(err);
@@ -185,42 +133,42 @@ export default function DashboardScreen() {
   const s = summary || { total_income: 0, total_expenses: 0, balance: 0, savings_pct: 0 };
   const displayCategories = categories;
 
+  // Estado del presupuesto → roles de finanzas (semánticos, accesibles en claro/oscuro)
   const getStatusColor = (status: string) =>
-    status === 'excedido' ? RED : status === 'advertencia' ? ORANGE : GREEN;
-
+    status === 'excedido' ? c.expense : status === 'advertencia' ? c.warning : c.income;
   const getStatusIcon = (status: string) =>
     status === 'excedido' ? 'alert-circle' : status === 'advertencia' ? 'warning' : 'checkmark-circle';
 
+  const balanceNegative = s.balance < 0;
+
   return (
-    <View style={[styles.screen, { backgroundColor: BG }]}>
-      {/* ── Header (Static) ── */}
+    <View style={[styles.screen, { backgroundColor: c.background }]}>
+      {/* ── Header ── */}
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Pressable
-            onPress={() => navigateMonth(-1)}
-            style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.5 : 1 }]}
-          >
-            <Ionicons name="chevron-back" size={22} color={TEXT} />
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => navigateMonth(-1)}
+          style={({ pressed }) => [styles.navBtn, { backgroundColor: t.elevation[3], opacity: pressed ? 0.6 : 1 }]}
+        >
+          <Ionicons name="chevron-back" size={22} color={c.onSurface} />
+        </Pressable>
 
         <View style={styles.headerCenter}>
-          <Text style={[styles.headerLabel, { color: TEXT2 }]}>Presupuesto</Text>
-          <Text style={[styles.headerMonth, { color: TEXT }]}>{capitalizedMonth}</Text>
+          <Text style={[styles.headerLabel, { color: c.onSurfaceVariant }]}>Presupuesto</Text>
+          <Text style={[t.type.titleLarge, { color: c.onSurface }]}>{capitalizedMonth}</Text>
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Pressable
             onPress={() => navigateMonth(1)}
-            style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.5 : 1 }]}
+            style={({ pressed }) => [styles.navBtn, { backgroundColor: t.elevation[3], opacity: pressed ? 0.6 : 1 }]}
           >
-            <Ionicons name="chevron-forward" size={22} color={TEXT} />
+            <Ionicons name="chevron-forward" size={22} color={c.onSurface} />
           </Pressable>
           <Pressable
             onPress={() => setShowFintoc(true)}
-            style={({ pressed }) => [styles.navBtn, { opacity: pressed ? 0.5 : 1, marginLeft: 8 }]}
+            style={({ pressed }) => [styles.navBtn, { backgroundColor: t.elevation[3], opacity: pressed ? 0.6 : 1 }]}
           >
-            <Ionicons name="business" size={22} color={TEXT} />
+            <Ionicons name="business" size={20} color={c.onSurface} />
           </Pressable>
         </View>
       </View>
@@ -228,89 +176,87 @@ export default function DashboardScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={BLUE}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} />
         }
       >
-        {/* ── Balance hero card ── */}
-        <View style={[styles.heroCard, { backgroundColor: isDark ? '#1C1C1E' : '#007AFF' }]}>
-          <Text style={styles.heroLabel}>Balance Neto</Text>
+        {/* ── Balance hero card (primaryContainer, cifra héroe display) ── */}
+        <View style={[styles.heroCard, { backgroundColor: c.primaryContainer }]}>
+          <Text style={[t.type.labelLarge, { color: c.onPrimaryContainer, opacity: 0.85 }]}>Balance neto</Text>
           {loading ? (
-            <SkeletonBox width={180} height={40} style={{ marginVertical: 8, borderRadius: 10 }} />
+            <SkeletonBox width={200} height={48} color={c.onPrimaryContainer + '22'} style={{ marginVertical: 8, borderRadius: 12 }} />
           ) : (
-            <Text style={[styles.heroAmount, { color: s.balance >= 0 ? '#FFFFFF' : '#FF453A' }]}>
+            <Text style={[t.type.displayHero, { color: balanceNegative ? c.expense : c.onPrimaryContainer }]}>
               {formatMoney(s.balance)}
             </Text>
           )}
-          <View style={styles.heroPill}>
-            <Ionicons name="trending-up" size={14} color="rgba(255,255,255,0.9)" />
-            <Text style={styles.heroPillText}>
+          <View style={[styles.heroPill, { backgroundColor: c.onPrimaryContainer + '1F' }]}>
+            <Ionicons name="trending-up" size={14} color={c.onPrimaryContainer} />
+            <Text style={[t.type.labelMedium, { color: c.onPrimaryContainer }]}>
               {loading ? '—' : `${s.savings_pct.toFixed(1)}% de ahorro`}
             </Text>
           </View>
         </View>
 
         {/* ── Alert Banner ── */}
-        <AlertBanner categories={displayCategories.map(c => ({
-          id: c.category_id, name: c.category_name, budget: c.budget_amount, spent: c.spent
+        <AlertBanner categories={displayCategories.map(cat => ({
+          id: cat.category_id, name: cat.category_name, budget: cat.budget_amount, spent: cat.spent
         }))} />
 
-        {/* ── Summary cards ── */}
-        <View style={styles.summarySection}>
-          <View style={styles.summaryRow}>
-            <SummaryCard
-              label="Ingresos"
-              value={loading ? '—' : formatMoney(s.total_income)}
-              color={GREEN}
-              icon="arrow-down-circle-outline"
-              delay={0}
-              cardBg={CARD}
-              labelColor={TEXT2}
-            />
-            <View style={{ width: 12 }} />
-            <SummaryCard
-              label="Gastos"
-              value={loading ? '—' : formatMoney(s.total_expenses)}
-              color={RED}
-              icon="arrow-up-circle-outline"
-              delay={80}
-              cardBg={CARD}
-              labelColor={TEXT2}
-            />
+        {/* ── Ingresos / Gastos (cards tonales) ── */}
+        <View style={styles.summaryRow}>
+          <View style={[styles.tonalCard, { backgroundColor: c.incomeContainer }]}>
+            <View style={styles.tonalCardHeader}>
+              <View style={[styles.tonalIcon, { backgroundColor: c.income }]}>
+                <Ionicons name="arrow-down" size={17} color={c.onIncome} />
+              </View>
+              <Text style={[t.type.labelLarge, { color: c.onIncomeContainer }]}>Ingresos</Text>
+            </View>
+            <Text style={[t.type.titleLarge, { color: c.onIncomeContainer, letterSpacing: -0.3 }]}>
+              {loading ? '—' : formatMoney(s.total_income)}
+            </Text>
+          </View>
+
+          <View style={[styles.tonalCard, { backgroundColor: c.expenseContainer }]}>
+            <View style={styles.tonalCardHeader}>
+              <View style={[styles.tonalIcon, { backgroundColor: c.expense }]}>
+                <Ionicons name="arrow-up" size={17} color={c.onExpense} />
+              </View>
+              <Text style={[t.type.labelLarge, { color: c.onExpenseContainer }]}>Gastos</Text>
+            </View>
+            <Text style={[t.type.titleLarge, { color: c.onExpenseContainer, letterSpacing: -0.3 }]}>
+              {loading ? '—' : formatMoney(s.total_expenses)}
+            </Text>
           </View>
         </View>
 
-        {/* ── Categories ── */}
+        {/* ── Estado del presupuesto ── */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: TEXT }]}>Estado del Presupuesto</Text>
-          <Text style={[styles.sectionSub, { color: TEXT2 }]}>{displayCategories.length} categorías</Text>
+          <Text style={[t.type.titleLarge, { color: c.onSurface }]}>Estado del presupuesto</Text>
+          <Text style={[t.type.bodyMedium, { color: c.onSurfaceVariant }]}>{displayCategories.length} categorías</Text>
         </View>
 
         <View style={styles.categoriesList}>
           {loading ? (
             [1, 2, 3].map(i => (
-              <View key={i} style={[styles.catCard, { backgroundColor: CARD }]}>
-                <SkeletonBox width={36} height={36} style={{ borderRadius: 12, marginRight: 12 }} />
+              <View key={i} style={[styles.catCard, { backgroundColor: t.elevation[1] }]}>
+                <SkeletonBox width={44} height={44} color={c.surfaceVariant} style={{ borderRadius: 16, marginRight: 14 }} />
                 <View style={{ flex: 1, gap: 8 }}>
-                  <SkeletonBox width="60%" height={14} />
-                  <SkeletonBox width="90%" height={8} />
-                  <SkeletonBox width="40%" height={12} />
+                  <SkeletonBox width="60%" height={14} color={c.surfaceVariant} />
+                  <SkeletonBox width="90%" height={8} color={c.surfaceVariant} />
+                  <SkeletonBox width="40%" height={12} color={c.surfaceVariant} />
                 </View>
               </View>
             ))
           ) : displayCategories.length === 0 ? (
-            <View style={[styles.emptyBudget, { backgroundColor: CARD, borderColor: BORDER }]}>
-              <Ionicons name="pie-chart-outline" size={42} color={TEXT2} style={{ opacity: 0.5 }} />
-              <Text style={[styles.emptyBudgetTitle, { color: TEXT }]}>Sin presupuestos este mes</Text>
-              <Text style={[styles.emptyBudgetSub, { color: TEXT2 }]}>
+            <View style={[styles.emptyBudget, { backgroundColor: t.elevation[1] }]}>
+              <Ionicons name="pie-chart-outline" size={42} color={c.onSurfaceVariant} style={{ opacity: 0.6 }} />
+              <Text style={[t.type.titleMedium, { color: c.onSurface }]}>Sin presupuestos este mes</Text>
+              <Text style={[t.type.bodyMedium, { color: c.onSurfaceVariant, textAlign: 'center' }]}>
                 Define montos por categoría en la pestaña Presupuesto para ver tu progreso aquí.
               </Text>
             </View>
           ) : (
-            displayCategories.map((cat, idx) => {
+            displayCategories.map((cat) => {
               const statusColor = getStatusColor(cat.status);
               const statusIcon = getStatusIcon(cat.status);
               return (
@@ -318,43 +264,34 @@ export default function DashboardScreen() {
                   key={cat.category_id}
                   style={({ pressed }) => [
                     styles.catCard,
-                    { backgroundColor: CARD, opacity: pressed ? 0.85 : 1, borderColor: BORDER }
+                    { backgroundColor: t.elevation[1], opacity: pressed ? 0.85 : 1 }
                   ]}
                   onPress={() => Haptics.selectionAsync()}
                 >
-                  {/* Left accent bar */}
-                  <View style={[styles.catAccent, { backgroundColor: statusColor }]} />
-
-                  {/* Icon */}
-                  <View style={[styles.catIconWrap, { backgroundColor: `${cat.color}18` }]}>
-                    <Ionicons name={getValidIcon(cat.icon as string)} size={20} color={cat.color} />
+                  <View style={[styles.catIconWrap, { backgroundColor: (cat.color || c.primary) + '22' }]}>
+                    <Ionicons name={getValidIcon(cat.icon as string)} size={22} color={cat.color || c.primary} />
                   </View>
 
-                  {/* Content */}
                   <View style={{ flex: 1 }}>
                     <View style={styles.catTopRow}>
-                      <Text style={[styles.catName, { color: TEXT }]}>{cat.category_name}</Text>
-                      <View style={[styles.statusBadge, { backgroundColor: `${statusColor}18` }]}>
+                      <Text style={[t.type.titleMedium, { color: c.onSurface }]}>{cat.category_name}</Text>
+                      <View style={[styles.statusBadge, { backgroundColor: statusColor + '22' }]}>
                         <Ionicons name={statusIcon as any} size={12} color={statusColor} />
-                        <Text style={[styles.statusBadgeText, { color: statusColor }]}>
-                          {Math.round(cat.pct_used)}%
-                        </Text>
+                        <Text style={[t.type.labelMedium, { color: statusColor }]}>{Math.round(cat.pct_used)}%</Text>
                       </View>
                     </View>
 
-                    {/* Progress bar */}
-                    <View style={[styles.progressBg, { backgroundColor: isDark ? '#3A3A3C' : '#F2F2F7' }]}>
+                    <View style={[styles.progressBg, { backgroundColor: c.surfaceVariant }]}>
                       <AnimatedProgressBar pct={cat.pct_used} color={statusColor} />
                     </View>
 
-                    {/* Amounts */}
                     <View style={styles.catAmounts}>
-                      <Text style={[styles.catAmountText, { color: TEXT2 }]}>
-                        <Text style={{ color: TEXT, fontWeight: '600' }}>{formatMoney(cat.spent)}</Text>
+                      <Text style={[t.type.bodyMedium, { color: c.onSurfaceVariant }]}>
+                        <Text style={{ color: c.onSurface, fontWeight: '600' }}>{formatMoney(cat.spent)}</Text>
                         {' de '}{formatMoney(cat.budget_amount)}
                       </Text>
                       {cat.status === 'excedido' && (
-                        <Text style={[styles.catExcessText, { color: RED }]}>
+                        <Text style={[t.type.labelMedium, { color: c.expense }]}>
                           +{formatMoney(cat.spent - cat.budget_amount)} excedido
                         </Text>
                       )}
@@ -366,22 +303,23 @@ export default function DashboardScreen() {
           )}
         </View>
 
-        <View style={{ height: 110 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* ── FAB ── */}
-      <Animated.View style={[styles.fabShadow, { transform: [{ scale: fabScale }] }]}>
-        <Pressable style={styles.fab} onPress={onFABPress}>
-          <Ionicons name="add" size={28} color="#FFF" />
+      {/* ── Extended FAB ── */}
+      <Animated.View style={[styles.fabWrap, { transform: [{ scale: fabScale }] }]}>
+        <Pressable style={[styles.fab, { backgroundColor: c.primary }]} onPress={onFABPress}>
+          <Ionicons name="add" size={24} color={c.onPrimary} />
+          <Text style={[t.type.labelLarge, { color: c.onPrimary }]}>Agregar</Text>
         </Pressable>
       </Animated.View>
 
       <Modal visible={showFintoc} animationType="slide" onRequestClose={() => setShowFintoc(false)}>
-        <View style={{ flex: 1, backgroundColor: BG }}>
-          <View style={{ paddingTop: 60, paddingBottom: 16, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', color: TEXT }}>Vincular Cuenta</Text>
-            <Pressable onPress={() => setShowFintoc(false)}>
-              <Ionicons name="close" size={28} color={TEXT} />
+        <View style={{ flex: 1, backgroundColor: c.background }}>
+          <View style={styles.modalHeader}>
+            <Text style={[t.type.headlineSmall, { color: c.onSurface }]}>Vincular cuenta</Text>
+            <Pressable onPress={() => setShowFintoc(false)} style={[styles.navBtn, { backgroundColor: t.elevation[3] }]}>
+              <Ionicons name="close" size={24} color={c.onSurface} />
             </Pressable>
           </View>
           <FintocWidget onLinkSuccess={handleLinkSuccess} />
@@ -396,104 +334,59 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-    zIndex: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 60, paddingBottom: 16, zIndex: 10,
   },
   navBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 44, height: 44, borderRadius: 999,
     justifyContent: 'center', alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.05)',
   },
   headerCenter: { alignItems: 'center' },
-  headerLabel: { fontSize: 12, fontWeight: '500', letterSpacing: 0.5, textTransform: 'uppercase' },
-  headerMonth: { fontSize: 20, fontWeight: '700', marginTop: 2 },
+  headerLabel: { fontSize: 11, fontWeight: '500', letterSpacing: 0.5, textTransform: 'uppercase' },
 
-  // Hero card
-  heroCard: {
-    marginHorizontal: 20,
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 8,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  heroLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '500', marginBottom: 4 },
-  heroAmount: { fontSize: 40, fontWeight: '800', letterSpacing: -1, marginBottom: 12 },
+  // Hero — shape.xl (28), elevación por color (sin sombra dura)
+  heroCard: { marginHorizontal: 20, borderRadius: 28, padding: 24, marginBottom: 8 },
   heroPill: {
     flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 6, gap: 4,
+    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, gap: 4, marginTop: 12,
   },
-  heroPillText: { color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '600' },
 
-  // Summary
-  summarySection: { paddingHorizontal: 20, marginTop: 16, marginBottom: 8 },
-  summaryRow: { flexDirection: 'row' },
-  summaryCard: {
-    flex: 1, backgroundColor: '#FFF', borderRadius: 16, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
-  },
-  summaryCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  summaryIconBg: { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  summaryLabel: { fontSize: 13, fontWeight: '500', color: '#6C6C70' },
-  summaryValue: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5 },
+  // Ingresos / Gastos
+  summaryRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 20, marginTop: 16 },
+  tonalCard: { flex: 1, borderRadius: 24, padding: 16 },
+  tonalCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  tonalIcon: { width: 30, height: 30, borderRadius: 999, justifyContent: 'center', alignItems: 'center' },
 
   // Section header
   sectionHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, marginTop: 24, marginBottom: 12,
+    paddingHorizontal: 20, marginTop: 28, marginBottom: 12,
   },
-  sectionTitle: { fontSize: 18, fontWeight: '700' },
-  sectionSub: { fontSize: 13 },
 
-  // Category cards
-  categoriesList: { paddingHorizontal: 20, gap: 12 },
-  catCard: {
-    flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-    overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth,
-  },
-  catAccent: { width: 3, height: '100%', borderRadius: 2, marginRight: 14, position: 'absolute', left: 0, top: 0 },
-  catIconWrap: {
-    width: 44, height: 44, borderRadius: 14,
-    justifyContent: 'center', alignItems: 'center', marginRight: 14,
-  },
+  // Category cards — surfaceContainerLow, esquinas grandes, sin sombra
+  categoriesList: { paddingHorizontal: 20, gap: 10 },
+  catCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 24, padding: 16 },
+  catIconWrap: { width: 44, height: 44, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
   catTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  catName: { fontSize: 15, fontWeight: '600' },
-  statusBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20,
-  },
-  statusBadgeText: { fontSize: 12, fontWeight: '700' },
-  progressBg: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 8 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999 },
+  progressBg: { height: 8, borderRadius: 999, overflow: 'hidden', marginBottom: 8 },
   catAmounts: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  catAmountText: { fontSize: 13 },
-  catExcessText: { fontSize: 12, fontWeight: '600' },
 
   // Empty budget state
-  emptyBudget: {
-    alignItems: 'center', justifyContent: 'center', gap: 8,
-    padding: 28, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth,
-  },
-  emptyBudgetTitle: { fontSize: 16, fontWeight: '700' },
-  emptyBudgetSub: { fontSize: 13, textAlign: 'center', lineHeight: 19 },
+  emptyBudget: { alignItems: 'center', justifyContent: 'center', gap: 8, padding: 28, borderRadius: 28 },
 
-  // FAB
-  fabShadow: {
-    position: 'absolute', bottom: 30, right: 24,
-    shadowColor: '#007AFF', shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45, shadowRadius: 16, elevation: 12,
-  },
+  // Extended FAB
+  fabWrap: { position: 'absolute', bottom: 28, right: 20 },
   fab: {
-    width: 60, height: 60, borderRadius: 30,
-    backgroundColor: '#007AFF', justifyContent: 'center', alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    height: 56, paddingHorizontal: 22, borderRadius: 20,
+    justifyContent: 'center',
+    elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 6,
+  },
+
+  // Modal
+  modalHeader: {
+    paddingTop: 60, paddingBottom: 16, paddingHorizontal: 20,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
 });

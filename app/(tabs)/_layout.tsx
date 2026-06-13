@@ -2,28 +2,33 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { HapticTab } from '@/components/haptic-tab';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/theme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const t = useAppTheme();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        tabBarInactiveTintColor: colorScheme === 'dark' ? '#636366' : '#8E8E93',
+        // MD3 navigation bar: activo = primary, inactivo = onSurfaceVariant,
+        // contenedor = surfaceContainer (elevación por color, sin sombra dura).
+        tabBarActiveTintColor: t.colors.primary,
+        tabBarInactiveTintColor: t.colors.onSurfaceVariant,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          borderTopWidth: 0.5,
-          elevation: 12,
-          shadowOpacity: 0.1,
+          backgroundColor: t.colors.surfaceContainer,
+          borderTopWidth: 0,
+          elevation: 0,
+          height: 64,
+          paddingTop: 6,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          // labelMedium de la type scale MD3
+          fontSize: t.type.labelMedium.fontSize,
           fontWeight: '500',
-          marginBottom: 2,
+          letterSpacing: t.type.labelMedium.letterSpacing,
+          marginBottom: 6,
         },
       }}>
       <Tabs.Screen

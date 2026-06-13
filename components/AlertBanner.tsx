@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Animated, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useAppTheme } from '@/theme';
 
 export interface BudgetCategory {
   id: string;
@@ -12,16 +13,17 @@ export interface BudgetCategory {
 }
 
 export default function AlertBanner({ categories }: { categories?: BudgetCategory[] }) {
+  const t = useAppTheme();
+  const c = t.colors;
+
   const [dismissed, setDismissed] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [data, setData] = useState<BudgetCategory[]>(categories || []);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
-  const heightAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     checkDismissedState();
-    // Slide in on mount
     Animated.spring(slideAnim, { toValue: 1, useNativeDriver: true, tension: 70, friction: 12 }).start();
   }, []);
 
@@ -53,43 +55,46 @@ export default function AlertBanner({ categories }: { categories?: BudgetCategor
     setExpanded(e => !e);
   };
 
-  const excedidas = data.filter(c => c.budget > 0 && c.spent / c.budget >= 1);
-  const advertencia = data.filter(c => c.budget > 0 && c.spent / c.budget >= 0.85 && c.spent / c.budget < 1);
+  const excedidas = data.filter(cat => cat.budget > 0 && cat.spent / cat.budget >= 1);
+  const advertencia = data.filter(cat => cat.budget > 0 && cat.spent / cat.budget >= 0.85 && cat.spent / cat.budget < 1);
 
   if (excedidas.length === 0 && advertencia.length === 0) return null;
   if (dismissed) return null;
 
   const monthName = new Date().toLocaleString('es-ES', { month: 'long' });
   const hasExcedidas = excedidas.length > 0;
-  const bannerColor = hasExcedidas ? '#FF3B30' : '#FF9500';
-  const bannerBg = hasExcedidas ? '#FFF1F0' : '#FFF8EE';
+
+  // Rol semántico según severidad (MD3 error / warning de finanzas)
+  const accent = hasExcedidas ? c.expense : c.warning;
+  const bannerBg = hasExcedidas ? c.expenseContainer : c.warningContainer;
+  const onBanner = hasExcedidas ? c.onExpenseContainer : c.onWarningContainer;
 
   const translateY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [-60, 0] });
   const opacity = slideAnim;
 
   return (
-    <Animated.View style={[styles.container, { backgroundColor: bannerBg, borderColor: bannerColor, opacity, transform: [{ translateY }] }]}>
+    <Animated.View style={[styles.container, { backgroundColor: bannerBg, opacity, transform: [{ translateY }] }]}>
       {/* Header row */}
       <Pressable style={styles.topRow} onPress={toggleExpand}>
-        <View style={[styles.iconCircle, { backgroundColor: `${bannerColor}20` }]}>
-          <Ionicons name={hasExcedidas ? 'alert-circle' : 'warning'} size={20} color={bannerColor} />
+        <View style={[styles.iconCircle, { backgroundColor: accent + '2E' }]}>
+          <Ionicons name={hasExcedidas ? 'alert-circle' : 'warning'} size={20} color={accent} />
         </View>
         <View style={{ flex: 1, marginLeft: 10 }}>
           {hasExcedidas && (
-            <Text style={[styles.title, { color: '#C0392B' }]}>
-              ⚠️ {excedidas.length} categoría(s) excedieron el presupuesto de {monthName}
+            <Text style={[styles.title, { color: onBanner }]}>
+              {excedidas.length} categoría(s) excedieron el presupuesto de {monthName}
             </Text>
           )}
           {advertencia.length > 0 && (
-            <Text style={[styles.title, { color: '#E67E22' }]}>
-              🔔 {advertencia.length} categoría(s) cerca del límite en {monthName}
+            <Text style={[styles.title, { color: onBanner }]}>
+              {advertencia.length} categoría(s) cerca del límite en {monthName}
             </Text>
           )}
         </View>
         <View style={styles.headerActions}>
-          <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={bannerColor} />
+          <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={accent} />
           <Pressable onPress={handleDismiss} style={styles.closeBtn} hitSlop={8}>
-            <Ionicons name="close" size={18} color={bannerColor} />
+            <Ionicons name="close" size={18} color={accent} />
           </Pressable>
         </View>
       </Pressable>
@@ -101,16 +106,16 @@ export default function AlertBanner({ categories }: { categories?: BudgetCategor
             const pct = Math.round((cat.spent / cat.budget) * 100);
             const exceso = cat.spent - cat.budget;
             return (
-              <View key={cat.id} style={[styles.detailRow, { backgroundColor: 'rgba(255,59,48,0.06)' }]}>
+              <View key={cat.id} style={[styles.detailRow, { backgroundColor: c.expense + '14' }]}>
                 <View style={styles.detailLeft}>
-                  <Text style={styles.detailName}>{cat.name}</Text>
-                  <Text style={styles.detailSub}>
+                  <Text style={[styles.detailName, { color: onBanner }]}>{cat.name}</Text>
+                  <Text style={[styles.detailSub, { color: onBanner, opacity: 0.75 }]}>
                     Pres. {formatK(cat.budget)} · Gastado {formatK(cat.spent)}
                   </Text>
                 </View>
                 <View style={styles.detailRight}>
-                  <Text style={[styles.detailPct, { color: '#FF3B30' }]}>{pct}%</Text>
-                  <Text style={[styles.detailExtra, { color: '#FF3B30' }]}>+{formatK(exceso)}</Text>
+                  <Text style={[styles.detailPct, { color: c.expense }]}>{pct}%</Text>
+                  <Text style={[styles.detailExtra, { color: c.expense }]}>+{formatK(exceso)}</Text>
                 </View>
               </View>
             );
@@ -119,16 +124,16 @@ export default function AlertBanner({ categories }: { categories?: BudgetCategor
             const pct = Math.round((cat.spent / cat.budget) * 100);
             const disponible = cat.budget - cat.spent;
             return (
-              <View key={cat.id} style={[styles.detailRow, { backgroundColor: 'rgba(255,149,0,0.06)' }]}>
+              <View key={cat.id} style={[styles.detailRow, { backgroundColor: c.warning + '14' }]}>
                 <View style={styles.detailLeft}>
-                  <Text style={styles.detailName}>{cat.name}</Text>
-                  <Text style={styles.detailSub}>
+                  <Text style={[styles.detailName, { color: onBanner }]}>{cat.name}</Text>
+                  <Text style={[styles.detailSub, { color: onBanner, opacity: 0.75 }]}>
                     Pres. {formatK(cat.budget)} · Gastado {formatK(cat.spent)}
                   </Text>
                 </View>
                 <View style={styles.detailRight}>
-                  <Text style={[styles.detailPct, { color: '#FF9500' }]}>{pct}%</Text>
-                  <Text style={[styles.detailExtra, { color: '#34C759' }]}>{formatK(disponible)} disp.</Text>
+                  <Text style={[styles.detailPct, { color: c.warning }]}>{pct}%</Text>
+                  <Text style={[styles.detailExtra, { color: c.income }]}>{formatK(disponible)} disp.</Text>
                 </View>
               </View>
             );
@@ -147,27 +152,21 @@ const formatK = (n: number) => {
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 20, marginTop: 16, borderRadius: 16,
-    borderWidth: 1, overflow: 'hidden',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4,
+    marginHorizontal: 20, marginTop: 16, borderRadius: 24, overflow: 'hidden',
   },
-  topRow: {
-    flexDirection: 'row', alignItems: 'flex-start', padding: 14,
-  },
-  iconCircle: {
-    width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center',
-  },
+  topRow: { flexDirection: 'row', alignItems: 'flex-start', padding: 14 },
+  iconCircle: { width: 36, height: 36, borderRadius: 999, justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: 13, fontWeight: '600', lineHeight: 18, marginBottom: 2 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 2 },
   closeBtn: { padding: 2 },
   details: { paddingHorizontal: 14, paddingBottom: 14, gap: 8 },
   detailRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 16,
   },
   detailLeft: { flex: 1 },
-  detailName: { fontSize: 14, fontWeight: '600', color: '#1C1C1E', marginBottom: 2 },
-  detailSub: { fontSize: 12, color: '#6C6C70' },
+  detailName: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
+  detailSub: { fontSize: 12 },
   detailRight: { alignItems: 'flex-end' },
   detailPct: { fontSize: 16, fontWeight: '800' },
   detailExtra: { fontSize: 12, fontWeight: '600', marginTop: 2 },

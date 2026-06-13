@@ -11,6 +11,8 @@ type FeedbackButtonProps = {
   status?: ButtonStatus;
   disabled?: boolean;
   color?: string;
+  /** Color del texto/ícono sobre el botón (MD3 "on-" role). Default blanco. */
+  onColor?: string;
   style?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle | TextStyle[];
   successLabel?: string;
@@ -22,6 +24,7 @@ export function FeedbackButton({
   status = 'idle',
   disabled = false,
   color = '#007AFF',
+  onColor = '#FFFFFF',
   style,
   textStyle,
   successLabel,
@@ -37,19 +40,19 @@ export function FeedbackButton({
 
   const buttonContent = () => {
     if (status === 'loading') {
-      return <ActivityIndicator color="#FFF" size="small" />;
+      return <ActivityIndicator color={onColor} size="small" />;
     }
 
     if (status === 'success') {
       return (
         <View style={styles.successContent}>
-          <Ionicons name="ticket" size={18} color="#FFF" style={styles.successIcon} />
-          <Text style={[styles.label, textStyle]}>{successLabel ?? 'Guardado'}</Text>
+          <Ionicons name="checkmark-circle" size={18} color={onColor} style={styles.successIcon} />
+          <Text style={[styles.label, { color: onColor }, textStyle]}>{successLabel ?? 'Guardado'}</Text>
         </View>
       );
     }
 
-    return <Text style={[styles.label, textStyle]}>{label}</Text>;
+    return <Text style={[styles.label, { color: onColor }, textStyle]}>{label}</Text>;
   };
 
   return (
@@ -72,12 +75,11 @@ const styles = StyleSheet.create({
     minWidth: 88,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },
   label: {
-    color: '#FFF',
     fontWeight: '700',
     fontSize: 15,
   },

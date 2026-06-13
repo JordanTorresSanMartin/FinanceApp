@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, Pressable, Alert, Modal, ActivityIndicator, useColorScheme } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Pressable, Alert, Modal, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../lib/supabase';
 import { FintocWidget } from '../../components/FintocWidget';
+import { useAppTheme } from '@/theme';
 
 const CATEGORY_MAP: Record<string, string> = {
   'Alimentación': '107270f9-eba9-4cea-869b-6b30e40b3c89',
@@ -27,20 +28,13 @@ const CATEGORY_MAP: Record<string, string> = {
 };
 
 export default function UserScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  
+  const t = useAppTheme();
+  const c = t.colors;
+
   const [userName, setUserName] = useState('Usuario');
   const [userEmail, setUserEmail] = useState('');
   const [showFintoc, setShowFintoc] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  const BG = isDark ? '#0F0F0F' : '#F4F6FB';
-  const CARD = isDark ? '#1C1C1E' : '#FFFFFF';
-  const TEXT = isDark ? '#F2F2F7' : '#1C1C1E';
-  const TEXT2 = isDark ? '#8E8E93' : '#6C6C70';
-  const BORDER = isDark ? '#2C2C2E' : '#E5E5EA';
-  const BLUE = '#007AFF';
 
   useEffect(() => {
     fetchUserData();
@@ -62,13 +56,10 @@ export default function UserScreen() {
         Alert.alert("Error", "Usuario no autenticado");
         return;
       }
-
       const { data, error } = await supabase.functions.invoke('fintoc-exchange', {
         body: { public_token: publicToken, user_id: user.id }
       });
-
       if (error) throw error;
-      
       Alert.alert("Éxito", `Banco ${data?.bank_name || ''} vinculado correctamente`);
     } catch (err: any) {
       console.error(err);
@@ -88,7 +79,7 @@ export default function UserScreen() {
 
       const fileUri = result.assets[0].uri;
       const fileContent = await FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' as any });
-      
+
       const workbook = XLSX.read(fileContent, { type: 'base64' });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
@@ -97,11 +88,10 @@ export default function UserScreen() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuario no autenticado");
 
-      // Esperamos que el excel tenga columnas: fecha (YYYY-MM-DD), descripcion, monto, categoria, tipo (gasto/ingreso)
       const transactionsToInsert = data.map((row: any) => {
         const categoryName = row.categoria || row.Categoria || 'Otros';
         const categoryId = CATEGORY_MAP[categoryName] || CATEGORY_MAP['Otros'];
-        
+
         return {
           user_id: user.id,
           date: row.fecha || row.Fecha || new Date().toISOString().split('T')[0],
@@ -119,7 +109,6 @@ export default function UserScreen() {
       } else {
         Alert.alert("Aviso", "No se encontraron transacciones válidas en el archivo.");
       }
-
     } catch (error: any) {
       console.error(error);
       Alert.alert("Error al importar", error.message || "Asegúrate de que el archivo tenga el formato correcto.");
@@ -133,74 +122,72 @@ export default function UserScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: BG }]}>
-      <View style={[styles.header, { backgroundColor: CARD, borderBottomColor: BORDER }]}>
-        <Text style={[styles.headerTitle, { color: TEXT }]}>Perfil</Text>
+    <View style={[styles.screen, { backgroundColor: c.background }]}>
+      <View style={[styles.header, { backgroundColor: c.surface }]}>
+        <Text style={[t.type.headlineMedium, { color: c.onSurface }]}>Perfil</Text>
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
-        
-        <View style={[styles.profileCard, { backgroundColor: CARD, borderColor: BORDER }]}>
-          <View style={[styles.avatar, { backgroundColor: BLUE + '20' }]}>
-            <Ionicons name="person" size={40} color={BLUE} />
+
+        {/* Profile card — primaryContainer */}
+        <View style={[styles.profileCard, { backgroundColor: c.primaryContainer }]}>
+          <View style={[styles.avatar, { backgroundColor: c.primary }]}>
+            <Ionicons name="person" size={40} color={c.onPrimary} />
           </View>
-          <Text style={[styles.name, { color: TEXT }]}>{userName}</Text>
-          <Text style={[styles.email, { color: TEXT2 }]}>{userEmail}</Text>
+          <Text style={[t.type.titleLarge, { color: c.onPrimaryContainer }]}>{userName}</Text>
+          <Text style={[t.type.bodyMedium, { color: c.onPrimaryContainer, opacity: 0.8 }]}>{userEmail}</Text>
         </View>
 
-        <Text style={[styles.sectionTitle, { color: TEXT }]}>Bancos</Text>
-        <Pressable 
-          style={({ pressed }) => [styles.actionButton, { backgroundColor: CARD, borderColor: BORDER, opacity: pressed ? 0.7 : 1 }]}
+        <Text style={[t.type.titleMedium, { color: c.onSurface, marginBottom: 12, marginLeft: 4 }]}>Bancos</Text>
+        <Pressable
+          style={({ pressed }) => [styles.actionButton, { backgroundColor: t.elevation[1], opacity: pressed ? 0.7 : 1 }]}
           onPress={() => setShowFintoc(true)}
         >
-          <View style={[styles.iconBox, { backgroundColor: '#34C75920' }]}>
-            <Ionicons name="business" size={24} color="#34C759" />
+          <View style={[styles.iconBox, { backgroundColor: c.income + '22' }]}>
+            <Ionicons name="business" size={24} color={c.income} />
           </View>
           <View style={styles.actionTextContainer}>
-            <Text style={[styles.actionTitle, { color: TEXT }]}>Vincular Cuenta Bancaria</Text>
-            <Text style={[styles.actionSub, { color: TEXT2 }]}>Conecta tu banco de forma segura vía Fintoc</Text>
+            <Text style={[t.type.titleMedium, { color: c.onSurface }]}>Vincular cuenta bancaria</Text>
+            <Text style={[t.type.bodyMedium, { color: c.onSurfaceVariant }]}>Conecta tu banco de forma segura vía Fintoc</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={TEXT2} />
+          <Ionicons name="chevron-forward" size={20} color={c.onSurfaceVariant} />
         </Pressable>
 
-        <Text style={[styles.sectionTitle, { color: TEXT }]}>Datos</Text>
-        <Pressable 
-          style={({ pressed }) => [styles.actionButton, { backgroundColor: CARD, borderColor: BORDER, opacity: pressed ? 0.7 : 1 }]}
+        <Text style={[t.type.titleMedium, { color: c.onSurface, marginBottom: 12, marginLeft: 4 }]}>Datos</Text>
+        <Pressable
+          style={({ pressed }) => [styles.actionButton, { backgroundColor: t.elevation[1], opacity: pressed ? 0.7 : 1 }]}
           onPress={handleImportExcel}
           disabled={isLoading}
         >
-          <View style={[styles.iconBox, { backgroundColor: BLUE + '20' }]}>
-            {isLoading ? <ActivityIndicator color={BLUE} /> : <Ionicons name="document-text" size={24} color={BLUE} />}
+          <View style={[styles.iconBox, { backgroundColor: c.primary + '22' }]}>
+            {isLoading ? <ActivityIndicator color={c.primary} /> : <Ionicons name="document-text" size={24} color={c.primary} />}
           </View>
           <View style={styles.actionTextContainer}>
-            <Text style={[styles.actionTitle, { color: TEXT }]}>Importar desde Excel</Text>
-            <Text style={[styles.actionSub, { color: TEXT2 }]}>Sube un archivo .xlsx con tus gastos e ingresos</Text>
+            <Text style={[t.type.titleMedium, { color: c.onSurface }]}>Importar desde Excel</Text>
+            <Text style={[t.type.bodyMedium, { color: c.onSurfaceVariant }]}>Sube un archivo .xlsx con tus gastos e ingresos</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={TEXT2} />
+          <Ionicons name="chevron-forward" size={20} color={c.onSurfaceVariant} />
         </Pressable>
 
-        <Pressable 
-          style={({ pressed }) => [styles.logoutButton, { opacity: pressed ? 0.7 : 1 }]}
+        <Pressable
+          style={({ pressed }) => [styles.logoutButton, { backgroundColor: c.errorContainer, opacity: pressed ? 0.7 : 1 }]}
           onPress={handleLogout}
         >
-          <Text style={styles.logoutText}>Cerrar Sesión</Text>
+          <Text style={[t.type.titleSmall, { color: c.onErrorContainer }]}>Cerrar sesión</Text>
         </Pressable>
 
       </ScrollView>
 
       <Modal visible={showFintoc} animationType="slide" onRequestClose={() => setShowFintoc(false)}>
-        <View style={{ flex: 1, backgroundColor: BG }}>
-          <View style={{ paddingTop: 60, paddingBottom: 16, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 20, fontWeight: 'bold', color: TEXT }}>Vincular Cuenta</Text>
-            <Pressable onPress={() => setShowFintoc(false)}>
-              <Ionicons name="close" size={28} color={TEXT} />
+        <View style={{ flex: 1, backgroundColor: c.background }}>
+          <View style={styles.modalHeader}>
+            <Text style={[t.type.headlineSmall, { color: c.onSurface }]}>Vincular cuenta</Text>
+            <Pressable onPress={() => setShowFintoc(false)} style={[styles.modalClose, { backgroundColor: t.elevation[3] }]}>
+              <Ionicons name="close" size={24} color={c.onSurface} />
             </Pressable>
           </View>
           {showFintoc && (
-            <FintocWidget 
-              onLinkSuccess={handleLinkSuccess} 
-              onExit={() => setShowFintoc(false)} 
-            />
+            <FintocWidget onLinkSuccess={handleLinkSuccess} onExit={() => setShowFintoc(false)} />
           )}
         </View>
       </Modal>
@@ -211,54 +198,16 @@ export default function UserScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  header: { 
-    paddingTop: 60, 
-    paddingHorizontal: 20, 
-    paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 16 },
+  profileCard: { alignItems: 'center', padding: 30, borderRadius: 28, marginBottom: 30 },
+  avatar: { width: 80, height: 80, borderRadius: 999, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  actionButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 24, marginBottom: 24 },
+  iconBox: { width: 48, height: 48, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  actionTextContainer: { flex: 1, gap: 4 },
+  logoutButton: { marginTop: 20, padding: 16, borderRadius: 999, alignItems: 'center' },
+  modalHeader: {
+    paddingTop: 60, paddingBottom: 16, paddingHorizontal: 20,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  headerTitle: { fontSize: 28, fontWeight: 'bold' },
-  profileCard: {
-    alignItems: 'center',
-    padding: 30,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 30,
-  },
-  avatar: {
-    width: 80, height: 80, borderRadius: 40,
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: 16,
-  },
-  name: { fontSize: 22, fontWeight: 'bold', marginBottom: 4 },
-  email: { fontSize: 14 },
-  sectionTitle: {
-    fontSize: 18, fontWeight: '600', marginBottom: 12, marginLeft: 4
-  },
-  actionButton: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: 16, borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginBottom: 24,
-  },
-  iconBox: {
-    width: 48, height: 48, borderRadius: 12,
-    justifyContent: 'center', alignItems: 'center',
-    marginRight: 16,
-  },
-  actionTextContainer: { flex: 1 },
-  actionTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
-  actionSub: { fontSize: 13 },
-  logoutButton: {
-    marginTop: 20,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: '#FF3B3015',
-    alignItems: 'center',
-  },
-  logoutText: {
-    color: '#FF3B30',
-    fontSize: 16,
-    fontWeight: '600',
-  }
+  modalClose: { width: 40, height: 40, borderRadius: 999, justifyContent: 'center', alignItems: 'center' },
 });

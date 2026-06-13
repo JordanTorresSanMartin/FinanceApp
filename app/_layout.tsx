@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, Theme, ThemeProvider } from '@react-navigation/native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -6,7 +6,7 @@ import 'react-native-reanimated';
 import { useEffect, useRef, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { AppThemeProvider, useAppTheme } from '@/theme';
 import { supabase } from '../lib/supabase';
 
 // Keep splash screen visible while we determine auth state
@@ -17,7 +17,14 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  return (
+    <AppThemeProvider>
+      <RootNavigator />
+    </AppThemeProvider>
+  );
+}
+
+function RootNavigator() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const isInitialLoad = useRef(true);
 
@@ -61,9 +68,24 @@ export default function RootLayout() {
     }
   }, [session]);
 
+  // Tema de navegación derivado de la paleta MD3 dinámica (Dynamic Color),
+  // para que fondos y textos del navigator combinen con el resto de la app.
+  const t = useAppTheme();
+  const navTheme: Theme = {
+    ...(t.dark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(t.dark ? DarkTheme : DefaultTheme).colors,
+      primary: t.colors.primary,
+      background: t.colors.background,
+      card: t.colors.surface,
+      text: t.colors.onSurface,
+      border: t.colors.outlineVariant,
+    },
+  };
+
   // Render the navigator immediately (but splash covers it)
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -73,7 +95,7 @@ export default function RootLayout() {
           options={{ headerShown: false }}
         />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style={t.dark ? 'light' : 'dark'} />
     </ThemeProvider>
   );
 }
