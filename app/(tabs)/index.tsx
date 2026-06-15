@@ -5,7 +5,7 @@ import {
   Modal, Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, type Href } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import AlertBanner from '../../components/AlertBanner';
 import { supabase } from '../../lib/supabase';
@@ -163,6 +163,12 @@ export default function DashboardScreen() {
             style={({ pressed }) => [styles.navBtn, { backgroundColor: t.elevation[3], opacity: pressed ? 0.6 : 1 }]}
           >
             <Ionicons name="chevron-forward" size={22} color={c.onSurface} />
+          </Pressable>
+          <Pressable
+            onPress={() => { Haptics.selectionAsync(); router.push('/analytics' as Href); }}
+            style={({ pressed }) => [styles.navBtn, { backgroundColor: t.colors.primaryContainer, opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Ionicons name="stats-chart" size={19} color={c.onPrimaryContainer} />
           </Pressable>
           <Pressable
             onPress={() => setShowFintoc(true)}
