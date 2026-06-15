@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 import { useAppTheme } from '@/theme';
@@ -52,14 +52,36 @@ export function CategoryDonut({
   const total = data.reduce((s, d) => s + d.value, 0);
   const cx = size / 2;
   const cy = size / 2;
-  const ro = size / 2;
-  const ri = ro - thickness;
   const pop = 10; // cuánto "sale" el sector seleccionado
+  const ro = size / 2 - pop; // reservamos el margen del pop para que NO se desborde
+  const ri = ro - thickness;
   const pad = data.length > 1 ? 0.025 : 0; // separación entre sectores (rad)
 
-  const press = (key: string) => {
+  const select = (key: string) => {
     Haptics.selectionAsync();
     onSelect?.(selectedKey === key ? null : key);
+  };
+
+  // Hit-testing por coordenadas: confiable dentro de un ScrollView
+  // (el onPress de los Path de SVG no lo es).
+  const handlePress = (e: GestureResponderEvent) => {
+    if (total <= 0 || !onSelect) return;
+    const { locationX, locationY } = e.nativeEvent;
+    const dx = locationX - cx;
+    const dy = locationY - cy;
+    const r = Math.sqrt(dx * dx + dy * dy);
+    if (r < ri - 8 || r > ro + pop + 8) return; // toque fuera del anillo (centro o borde)
+    let ang = Math.atan2(dx, -dy); // 0 = arriba, sentido horario
+    if (ang < 0) ang += 2 * Math.PI;
+    let acc = 0;
+    for (const seg of data) {
+      const frac = seg.value / total;
+      if (ang >= acc * 2 * Math.PI && ang < (acc + frac) * 2 * Math.PI) {
+        select(seg.key);
+        return;
+      }
+      acc += frac;
+    }
   };
 
   // Estado vacío
@@ -90,19 +112,11 @@ export function CategoryDonut({
   const single = data.length === 1;
 
   return (
-    <View style={{ width: size, height: size }}>
+    <Pressable onPress={handlePress} style={{ width: size, height: size }}>
       <Svg width={size} height={size}>
         <G>
           {single ? (
-            <Circle
-              cx={cx}
-              cy={cy}
-              r={(ri + ro) / 2}
-              stroke={data[0].color}
-              strokeWidth={thickness}
-              fill="none"
-              onPress={() => press(data[0].key)}
-            />
+            <Circle cx={cx} cy={cy} r={(ri + ro) / 2} stroke={data[0].color} strokeWidth={thickness} fill="none" />
           ) : (
             slices.map(({ seg, a0, a1, selected, dim }) => (
               <Path
@@ -110,7 +124,6 @@ export function CategoryDonut({
                 d={annularPath(cx, cy, ri, selected ? ro + pop : ro, a0, a1)}
                 fill={seg.color}
                 opacity={dim ? 0.4 : 1}
-                onPress={() => press(seg.key)}
               />
             ))
           )}
@@ -130,7 +143,7 @@ export function CategoryDonut({
           </Text>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
