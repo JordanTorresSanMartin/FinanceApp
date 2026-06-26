@@ -55,3 +55,36 @@ export interface MonthlySummary {
   balance:       number;
   savings_pct:   number;
 }
+
+// ── Estados de cuenta (PDF) y cuotas → "Próximos pagos" ──────────────────────
+export interface ForecastMonth {
+  month:  string;   // "JULIO", "AGOSTO", …
+  amount: number;
+}
+
+export interface Statement {
+  id:             string;
+  bank:           string | null;
+  card_last4:     string | null;
+  statement_date: string | null;   // ISO date
+  due_date:       string | null;    // ISO date — pagar hasta
+  total_amount:   number;            // monto total facturado
+  minimum_amount: number;            // monto mínimo
+  forecast:       ForecastMonth[] | null;
+  filename:       string | null;
+  created_at:     string;
+}
+
+export interface Installment {
+  id:                  string;
+  statement_id:        string;
+  description:         string;
+  operation_date:      string | null;
+  category_id:         string | null;
+  total_amount:        number;   // monto total de la compra
+  monthly_amount:      number;   // valor cuota mensual
+  installment_current: number;   // cuota ya pagada (0 = recién comprado)
+  installment_total:   number;   // nº total de cuotas
+  categories?:         Pick<Category, 'name' | 'icon' | 'color'>;
+  statements?:         Pick<Statement, 'bank' | 'card_last4'>;  // tarjeta de origen
+}

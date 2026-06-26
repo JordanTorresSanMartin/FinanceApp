@@ -90,6 +90,7 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="analytics" options={{ headerShown: false }} />
+        <Stack.Screen name="upcoming" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         <Stack.Screen
           name="transaction"

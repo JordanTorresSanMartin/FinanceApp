@@ -235,6 +235,23 @@ export default function DashboardScreen() {
           </View>
         </View>
 
+        {/* ── Acceso: Próximos pagos (cuotas de estados de cuenta) ── */}
+        <Pressable
+          onPress={() => { Haptics.selectionAsync(); router.push('/upcoming' as Href); }}
+          style={({ pressed }) => [styles.upcomingCard, { backgroundColor: t.elevation[2], opacity: pressed ? 0.85 : 1 }]}
+        >
+          <View style={[styles.upcomingIcon, { backgroundColor: c.primary + '22' }]}>
+            <Ionicons name="card" size={22} color={c.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[t.type.titleMedium, { color: c.onSurface }]}>Próximos pagos</Text>
+            <Text style={[t.type.bodyMedium, { color: c.onSurfaceVariant }]}>
+              Cuotas de tus estados de cuenta
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={c.onSurfaceVariant} />
+        </Pressable>
+
         {/* ── Estado del presupuesto ── */}
         <View style={styles.sectionHeader}>
           <Text style={[t.type.titleLarge, { color: c.onSurface }]}>Estado del presupuesto</Text>
@@ -362,6 +379,13 @@ const styles = StyleSheet.create({
   tonalCard: { flex: 1, borderRadius: 24, padding: 16 },
   tonalCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   tonalIcon: { width: 30, height: 30, borderRadius: 999, justifyContent: 'center', alignItems: 'center' },
+
+  // Acceso Próximos pagos
+  upcomingCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    marginHorizontal: 20, marginTop: 16, padding: 16, borderRadius: 24,
+  },
+  upcomingIcon: { width: 44, height: 44, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
 
   // Section header
   sectionHeader: {
